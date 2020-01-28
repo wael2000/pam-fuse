@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="        http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd        http://camel.apache.org/schema/spring       http://camel.apache.org/schema/spring/camel-spring.xsd">
+    <bean class="org.mycompany.ExcelDataFormat" id="excelDataFormat"/>
+    <camelContext id="camel" xmlns="http://camel.apache.org/schema/spring">
+        <dataFormats>
+            <json disableFeatures="FAIL_ON_EMPTY_BEANS"
+                id="transform-json" library="Jackson"/>
+        </dataFormats>
+        <restConfiguration bindingMode="json_xml" component="servlet" port="8090">
+            <dataFormatProperty key="xml.out.mustBeJAXBElement" value="false"/>
+            <dataFormatProperty key="prettyPrint" value="true"/>
+            <apiProperty key="cors" value="false"/>
+            <apiProperty key="api.title" value="Ansible Tower Camel REST API"/>
+            <apiProperty key="api.version" value="1.0.0"/>
+        </restConfiguration>
+        <rest id="job" path="/job">
+            <get id="launch" uri="/launch">
+                <to uri="direct:_lunchJob"/>
+            </get>
+        </rest>
+        <route id="simple-route">
+            <!-- <from id="route-timer" uri="timer://foo?period=10000"/>   -->
+            <from id="_provision" uri="direct:_lunchJob"/>
+            <setHeader headerName="content-type" id="_setHeader1">
+                <simple>application/json</simple>
+            </setHeader>
+            <setBody id="_setBody1">
+                <simple>{
+				  "application": 1,
+				  "description":"rest-token",
+				  "scope": "write"
+				}</simple>
+            </setBody>
+            <to id="requestToken" uri="https4://ansible.lab.rhdxb.com:9443/api/v2/tokens/?authenticationPreemptive=true&amp;httpMethod=POST&amp;authMethod=Basic&amp;authPassword=redhat123&amp;authUsername=pamdemo"/>
+            <unmarshal id="_unmarshal1" ref="transform-json"/>
+            <setHeader headerName="Authorization" id="_setAuthorizationHeader">
+                <simple>Bearer ${body['token']}</simple>
+            </setHeader>
+            <setBody id="_setBody1">
+                <simple>{
+				  "extra_vars": {
+					 "auth_url": "https://api.dubaipulse.gov.ae/oauth/client_credential/accesstoken?grant_type=client_credentials",
+					 "endpoint_url": "https://api.dubaipulse.gov.ae/open/rta/rta_salik_tariff-open-api"
+					}
+				}</simple>
+            </setBody>
+            <to id="executeJob" uri="https4://ansible.lab.rhdxb.com:9443/api/v2/job_templates/45/launch/?httpMethod=POST&amp;bridgeEndpoint=false"/>
+            <unmarshal id="_unmarshal2" ref="transform-json"/>
+            <log id="job-log" message=" job >>> ${body}"/>
+        </route>
+        <route id="_route1">
+            <from id="_from1" uri="file:/Users/redhat/Documents/Fuse/demo/ansible-tower/files"/>
+            <unmarshal id="_unmarshal3">
+                <!-- refer to my custom data format -->
+                <custom ref="excelDataFormat"/>
+            </unmarshal>
+            <to id="_to1" uri="file:/Users/redhat/Documents/Fuse/demo/ansible-tower/processed-files"/>
+        </route>
+    </camelContext>
+</beans>

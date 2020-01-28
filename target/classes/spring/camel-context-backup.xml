@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="        http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd        http://camel.apache.org/schema/spring       http://camel.apache.org/schema/spring/camel-spring.xsd">
+    <!--
+        <sslContextParameters id="sslContextParameters" xmlns="http://camel.apache.org/schema/spring">
+        <keyManagers keyPassword="redhat123">
+            <keyStore password="redhat123" resource="classpath:lab-user-cert.jks"/>
+        </keyManagers>
+        <trustManagers>
+            <keyStore password="redhat123" resource="classpath:lab-user-cert.jks"/>
+        </trustManagers>
+    </sslContextParameters>
+    
+    <sslContextParameters id="clientSSLParameters" xmlns="http://camel.apache.org/schema/spring">
+        <keyManagers keyPassword="redhat123">
+            <keyStore password="redhat123" resource="classpath:client.jks"/>
+        </keyManagers>
+        <trustManagers>
+            <keyStore password="redhat123" resource="classpath:client.jks"/>
+        </trustManagers>
+    </sslContextParameters>
+     <bean class="org.apache.http.conn.ssl.AllowAllHostnameVerifier" id="allHostNameVerifier1"/>
+    <bean class="org.apache.http.conn.ssl.NoopHostnameVerifier" id="allHostNameVerifier"/>
+    <bean id="myHttpClientConfigurer" class="org.mycompany.MyHttpClientConfigurer"/>
+  
+    httpClientConfigurer=myHttpClientConfigurer&amp;sslContextParametersRef=sslParameters&amp;
+    <bean class="org.apache.camel.component.http4.HttpComponent" id="https4">
+        <property name="sslContextParameters" ref="serverSSLParameters"/>
+    </bean> 
+    <bean class="org.apache.camel.component.http4.HttpComponent" id="https4">
+        <property name="sslContextParameters" ref="sslParameters"/>
+    </bean>
+    <bean id="myHttpClientConfigurer" class="MyHttpClientConfigurer"/>
+	<to uri="https4://myhostname.com:443/myURL?httpClientConfigurer=myHttpClientConfigurer"/>
+	<bean class="org.mycompany.InsecureHttps4Component" id="insecureHttps4"/>
+    -->
+    <bean class="org.mycompany.InsecureHttps4Component" id="insecureHttps4"/>
+    <camelContext id="camel" xmlns="http://camel.apache.org/schema/spring">
+        <route id="simple-route">
+            <!--  <to id="serviceCatalogEndpoint" uri="insecureHttps4://ansible.lab.rhdxb.com/api/v2/tokens/?sslContextParametersRef=sslParameters&amp;httpMethod=POST"/>  -->
+            <from id="route-timer" uri="timer://foo?period=10000"/>
+            <setBody id="route-setBody">
+                <simple>Hello World from camel-context.xml</simple>
+            </setBody>
+            <setHeader headerName="content-type" id="_setHeader1">
+                <simple>application/json</simple>
+            </setHeader>
+            <setBody id="_setBody1">
+                <simple>{
+				  "application": 1,
+				  "scope": "write",
+				  "expires":"2020-01-27T10:13:13.876084Z"
+				}</simple>
+            </setBody>
+            <to id="serviceCatalogEndpoint" uri="https4://ansible.lab.rhdxb.com:9443/api/v2/tokens/?authenticationPreemptive=true&amp;httpMethod=POST&amp;authMethod=Basic&amp;authPassword=redhat123&amp;authUsername=pamdemo"/>
+            <log id="route-log" message=" token >>> ${body.token}"/>
+        </route>
+    </camelContext>
+</beans>
